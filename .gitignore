@@ -1,0 +1,28 @@
+# JavaScript and Next.js
+node_modules/
+.next/
+out/
+coverage/
+
+# Go
+bin/
+*.exe
+*.test
+*.out
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
