@@ -55,6 +55,13 @@ func NewClient() (*Client, error) {
 	return &Client{clientset: clientset}, nil
 }
 
+// NewClientWithClientset makes the resource readers testable without a live
+// Kubernetes cluster. It is also useful for future integrations that provide
+// their own authenticated clientset.
+func NewClientWithClientset(clientset kubernetes.Interface) *Client {
+	return &Client{clientset: clientset}
+}
+
 // Summary reads only the resources shown on the initial dashboard.
 func (c *Client) Summary(ctx context.Context) (Summary, error) {
 	namespaces, err := c.clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
