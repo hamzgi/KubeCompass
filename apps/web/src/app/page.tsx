@@ -74,9 +74,27 @@ type SecurityReport = {
   observedAt: string;
 };
 
+type SecurityPosture = {
+  score: number;
+  status: string;
+  summary: string;
+  statusClassName: string;
+  statusBadgeClassName: string;
+  counts: Record<SecurityIssue["severity"], number>;
+  riskPoints: number;
+  triggeredRuleCount: number;
+};
+
 type LoadState = "loading" | "ready" | "error";
 type IssueFilter = "all" | SecurityIssue["severity"];
 type DashboardView = "home" | "cluster-map" | "security";
+
+const securityPenaltyBySeverity: Record<SecurityIssue["severity"], number> = {
+  critical: 30,
+  high: 15,
+  medium: 5,
+  low: 1,
+};
 
 const severityMeta: Record<
   SecurityIssue["severity"],
@@ -158,6 +176,217 @@ function resourceLabel(issue: SecurityIssue) {
     ? ` · 컨테이너 ${issue.resource.container}`
     : "";
   return `${issue.resource.namespace} / ${issue.resource.name}${container}`;
+}
+
+function calculateSecurityPosture(issues: SecurityIssue[]): SecurityPosture {
+  const counts: SecurityPosture["counts"] = {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  };
+
+  for (const issue of issues) {
+    counts[issue.severity] += 1;
+  }
+
+  const riskPoints = (Object.keys(counts) as SecurityIssue["severity"][]).reduce(
+    (total, severity) => total + counts[severity] * securityPenaltyBySeverity[severity],
+    0,
+  );
+  const score = Math.max(0, 100 - riskPoints);
+  const triggeredRuleCount = new Set(issues.map((issue) => issue.ruleId)).size;
+
+  if (score >= 85) {
+    return {
+      score,
+      status: "양호",
+      summary: "현재 점검 범위에서 우선 조치가 필요한 설정 위험이 적습니다.",
+      statusClassName: "text-emerald-600",
+      statusBadgeClassName: "bg-emerald-100 text-emerald-800",
+      counts,
+      riskPoints,
+      triggeredRuleCount,
+    };
+  }
+
+  if (score >= 65) {
+    return {
+      score,
+      status: "확인 필요",
+      summary: "낮거나 중간 수준의 설정 위험을 확인해 보세요.",
+      statusClassName: "text-amber-600",
+      statusBadgeClassName: "bg-amber-100 text-amber-800",
+      counts,
+      riskPoints,
+      triggeredRuleCount,
+    };
+  }
+
+  if (score >= 40) {
+    return {
+      score,
+      status: "주의",
+      summary: "중간 이상 위험 항목을 우선순위에 따라 보완해야 합니다.",
+      statusClassName: "text-orange-600",
+      statusBadgeClassName: "bg-orange-100 text-orange-800",
+      counts,
+      riskPoints,
+      triggeredRuleCount,
+    };
+  }
+
+  return {
+    score,
+    status: "위험",
+    summary: "높은 위험도 항목이 있거나 설정 위험이 누적되어 우선 조치가 필요합니다.",
+    statusClassName: "text-rose-600",
+    statusBadgeClassName: "bg-rose-100 text-rose-800",
+    counts,
+    riskPoints,
+    triggeredRuleCount,
+  };
+}
+
+function SecurityStatusGauge({
+  posture,
+  isLoading,
+}: {
+  posture: SecurityPosture | null;
+  isLoading: boolean;
+}) {
+  const score = posture?.score ?? 50;
+  const needleAngle = 180 - score * 1.8;
+  const needleRadians = (needleAngle * Math.PI) / 180;
+  const needleX = 120 + 62 * Math.cos(needleRadians);
+  const needleY = 120 - 62 * Math.sin(needleRadians);
+
+  return (
+    <section
+      className="home-security-gauge mt-6 grid overflow-hidden border border-slate-200 bg-white lg:grid-cols-[minmax(290px,0.8fr)_minmax(0,1.2fr)]"
+      aria-labelledby="security-gauge-title"
+    >
+      <div className="flex flex-col items-center justify-center border-b border-slate-200 bg-slate-50 px-5 py-7 lg:border-r lg:border-b-0">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          Security posture
+        </p>
+        <svg
+          className="mt-3 h-auto w-full max-w-[300px]"
+          viewBox="0 0 240 148"
+          role="img"
+          aria-label={
+            isLoading
+              ? "보안 상태를 계산하는 중"
+              : `보안 상태 지수 ${posture?.score ?? 0}점, ${posture?.status ?? "확인 중"}`
+          }
+        >
+          <path d="M 27 120 A 93 93 0 0 1 54.2 54.2" fill="none" stroke="#e53935" strokeWidth="18" />
+          <path d="M 59.1 50.2 A 93 93 0 0 1 115.9 27" fill="none" stroke="#fb8c00" strokeWidth="18" />
+          <path d="M 124.1 27 A 93 93 0 0 1 180.9 50.2" fill="none" stroke="#fbc02d" strokeWidth="18" />
+          <path d="M 185.8 54.2 A 93 93 0 0 1 213 120" fill="none" stroke="#43a047" strokeWidth="18" />
+          <path d="M 38 120 A 82 82 0 0 1 202 120" fill="none" stroke="#e5e7eb" strokeWidth="2" />
+          {!isLoading && posture && (
+            <>
+              <line
+                x1="120"
+                y1="120"
+                x2={needleX}
+                y2={needleY}
+                stroke="#263238"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+              <circle cx="120" cy="120" r="9" fill="#263238" />
+              <circle cx="120" cy="120" r="4" fill="#ffffff" />
+            </>
+          )}
+          <text x="28" y="142" fill="#6b7280" fontSize="10" fontWeight="700">
+            위험
+          </text>
+          <text
+            x="120"
+            y="52"
+            fill="#6b7280"
+            fontSize="10"
+            fontWeight="700"
+            textAnchor="middle"
+          >
+            확인
+          </text>
+          <text x="191" y="142" fill="#6b7280" fontSize="10" fontWeight="700">
+            양호
+          </text>
+        </svg>
+        <div className="-mt-5 text-center">
+          <p className="text-xs font-semibold text-slate-500">보안 상태 지수</p>
+          <p className={`mt-1 text-4xl font-bold tracking-tight ${posture?.statusClassName ?? "text-slate-400"}`}>
+            {isLoading ? "-" : posture?.score ?? "-"}
+            <span className="ml-1 text-base font-medium text-slate-400">/ 100</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+              Configuration assessment
+            </p>
+            <h2 id="security-gauge-title" className="mt-1 text-xl font-bold text-slate-900">
+              보안 상태 측정기
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              보안 설정 확인에서 탐지한 위험도별 항목을 빠르게 요약합니다.
+            </p>
+          </div>
+          <span className={`w-fit px-3 py-1.5 text-sm font-bold ${posture?.statusBadgeClassName ?? "bg-slate-100 text-slate-600"}`}>
+            {isLoading ? "계산 중" : posture?.status ?? "확인 중"}
+          </span>
+        </div>
+
+        {isLoading || !posture ? (
+          <p className="py-8 text-sm text-slate-500">보안 설정 결과를 불러오는 중입니다.</p>
+        ) : (
+          <>
+            <p className={`mt-5 text-base font-bold ${posture.statusClassName}`}>
+              {posture.summary}
+            </p>
+            <div className="mt-5 grid gap-2 sm:grid-cols-4">
+              {(
+                [
+                  ["CRITICAL", posture.counts.critical, "-30", "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800"],
+                  ["HIGH", posture.counts.high, "-15", "border-rose-200 bg-rose-50 text-rose-800"],
+                  ["MEDIUM", posture.counts.medium, "-5", "border-amber-200 bg-amber-50 text-amber-800"],
+                  ["LOW", posture.counts.low, "-1", "border-sky-200 bg-sky-50 text-sky-800"],
+                ] as const
+              ).map(([severity, count, penalty, className]) => (
+                <div key={severity} className={`border px-3 py-3 ${className}`}>
+                  <p className="text-[10px] font-bold tracking-wide">{severity}</p>
+                  <p className="mt-1 text-2xl font-bold">{count}</p>
+                  <p className="mt-1 text-[11px] font-medium">건당 {penalty}점</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                탐지 항목 <span className="font-bold text-slate-900">{issuesTotal(posture.counts)}건</span> · 탐지 규칙 <span className="font-bold text-slate-900">{posture.triggeredRuleCount}개</span> · 총 감점 <span className="font-bold text-slate-900">{posture.riskPoints}점</span>
+              </p>
+              <Link href="/security" className="font-bold text-blue-700 hover:underline">
+                보안 설정 확인으로 이동 →
+              </Link>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              이 지수는 현재 구성 점검 결과를 요약한 KubeCompass 학습용 지표이며, CVSS나 보안 인증 점수가 아닙니다.
+            </p>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function issuesTotal(counts: SecurityPosture["counts"]) {
+  return counts.critical + counts.high + counts.medium + counts.low;
 }
 
 function TopologyNodeLabel({ node }: { node: ClusterTopologyNode }) {
@@ -295,13 +524,16 @@ export default function Home() {
           setTopology(null);
           setSecurityReport(nextSecurityReport);
         } else {
-          const nextSummary = await fetchJSON<ClusterSummary>(
-            "/api/v1/summary",
-            controller.signal,
-          );
+          const [nextSummary, nextSecurityReport] = await Promise.all([
+            fetchJSON<ClusterSummary>("/api/v1/summary", controller.signal),
+            fetchJSON<SecurityReport>(
+              "/api/v1/security-issues",
+              controller.signal,
+            ),
+          ]);
           setSummary(nextSummary);
           setTopology(null);
-          setSecurityReport(null);
+          setSecurityReport(nextSecurityReport);
         }
         setLoadState("ready");
       } catch {
@@ -368,6 +600,10 @@ export default function Home() {
   }, [selectedMapNamespace, topology]);
 
   const issues = useMemo(() => securityReport?.issues ?? [], [securityReport]);
+  const homeSecurityPosture = useMemo(
+    () => (securityReport ? calculateSecurityPosture(securityReport.issues) : null),
+    [securityReport],
+  );
   const securityNamespaceNames = useMemo(
     () =>
       [...new Set(issues.map((issue) => issue.resource.namespace))].sort(
@@ -842,6 +1078,13 @@ export default function Home() {
             </div>
           )}
         </section>
+
+            {loadState !== "error" && (
+              <SecurityStatusGauge
+                posture={homeSecurityPosture}
+                isLoading={loadState === "loading"}
+              />
+            )}
 
             <section className="mt-6 grid gap-4 md:grid-cols-2" aria-label="주요 기능 바로가기">
               <Link
