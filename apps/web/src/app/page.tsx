@@ -8,12 +8,13 @@ import {
   ReactFlow,
   type Edge,
   type Node,
+  type OnNodesChange,
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ClusterSummary = {
   namespaces: number;
@@ -251,6 +252,9 @@ export default function Home() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [issueFilter, setIssueFilter] = useState<IssueFilter>("all");
   const [selectedMapNamespace, setSelectedMapNamespace] = useState("all");
+  const [mapNodePositions, setMapNodePositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
   const [selectedSecurityNamespace, setSelectedSecurityNamespace] =
     useState("all");
   const [selectedIssueID, setSelectedIssueID] = useState<string | null>(null);
@@ -258,6 +262,8 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let isDisposed = false;
+    const timeoutID = window.setTimeout(() => controller.abort(), 12_000);
 
     async function loadCurrentView() {
       setLoadState("loading");
@@ -290,18 +296,24 @@ export default function Home() {
         }
         setLoadState("ready");
       } catch {
-        if (!controller.signal.aborted) {
+        if (!isDisposed) {
           setSummary(null);
           setTopology(null);
           setSecurityReport(null);
           setLoadState("error");
         }
+      } finally {
+        window.clearTimeout(timeoutID);
       }
     }
 
     void loadCurrentView();
 
-    return () => controller.abort();
+    return () => {
+      isDisposed = true;
+      window.clearTimeout(timeoutID);
+      controller.abort();
+    };
   }, [currentView, reloadKey]);
 
   const cards = [
@@ -556,12 +568,42 @@ export default function Home() {
             boxShadow: "0 3px 10px rgba(15, 58, 65, 0.08)",
             zIndex: 1,
           },
-          className: meta.className,
+          className: `${meta.className} cursor-grab active:cursor-grabbing`,
         };
       });
 
     return [...namespaceAreas, ...resourceNodes];
   }, [mapTopology]);
+
+  const onMapNodesChange = useCallback<OnNodesChange>((changes) => {
+    setMapNodePositions((currentPositions) => {
+      let nextPositions = currentPositions;
+
+      for (const change of changes) {
+        if (change.type !== "position" || !change.position) {
+          continue;
+        }
+
+        if (nextPositions === currentPositions) {
+          nextPositions = { ...currentPositions };
+        }
+
+        nextPositions[change.id] = change.position;
+      }
+
+      return nextPositions;
+    });
+  }, []);
+
+  const draggableGraphNodes = useMemo(
+    () =>
+      graphNodes.map((node) => {
+        const position = mapNodePositions[node.id];
+
+        return position ? { ...node, position } : node;
+      }),
+    [graphNodes, mapNodePositions],
+  );
 
   const graphEdges = useMemo<Edge[]>(() => {
     if (!mapTopology) {
@@ -864,7 +906,10 @@ export default function Home() {
                 <select
                   className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white"
                   value={selectedMapNamespace}
-                  onChange={(event) => setSelectedMapNamespace(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedMapNamespace(event.target.value);
+                    setMapNodePositions({});
+                  }}
                 >
                   <option value="all">전체 Namespace</option>
                   {mapNamespaceNames.map((namespace) => (
@@ -966,7 +1011,7 @@ export default function Home() {
                   <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-blue-700">
                     MAP VIEW
                   </span>
-                  <span className="ml-1">캔버스를 드래그하고 왼쪽 하단 컨트롤로 확대/축소합니다.</span>
+                  <span className="ml-1">리소스 카드는 드래그해 배치를 바꾸고, 빈 공간은 드래그해 이동합니다.</span>
                 </div>
                 <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 uppercase tracking-wide text-slate-500">
                   Resource relationship map
@@ -991,12 +1036,13 @@ export default function Home() {
                 ) : (
                   <ReactFlow
                     key={`${mapTopology?.observedAt}-${selectedMapNamespace}`}
-                    nodes={graphNodes}
+                    nodes={draggableGraphNodes}
                     edges={graphEdges}
                     nodeTypes={nodeTypes}
+                    onNodesChange={onMapNodesChange}
                     fitView
                     fitViewOptions={{ padding: 0.18 }}
-                    nodesDraggable={false}
+                    nodesDraggable
                     nodesConnectable={false}
                     elementsSelectable={false}
                     proOptions={{ hideAttribution: true }}
