@@ -46,7 +46,15 @@ type ClusterTopology = {
 type SecurityIssue = {
   id: string;
   ruleId: string;
-  severity: "high" | "medium" | "low";
+  severity: "critical" | "high" | "medium" | "low";
+  category: string;
+  assessment: string;
+  cvss: string;
+  references: {
+    framework: string;
+    control: string;
+    url: string;
+  }[];
   title: string;
   resource: {
     kind: string;
@@ -74,6 +82,7 @@ const severityMeta: Record<
   SecurityIssue["severity"],
   { label: string; className: string }
 > = {
+  critical: { label: "심각", className: "bg-fuchsia-100 text-fuchsia-800" },
   high: { label: "높음", className: "bg-rose-100 text-rose-800" },
   medium: { label: "보통", className: "bg-amber-100 text-amber-800" },
   low: { label: "낮음", className: "bg-sky-100 text-sky-800" },
@@ -93,30 +102,30 @@ const topologyMeta: Record<
     term: "Namespace",
     friendlyLabel: "작업 공간",
     helpText: "클러스터 안의 리소스를 팀·환경·용도별로 나누는 공간입니다.",
-    className: "border-violet-200 bg-violet-50 text-violet-950",
-    badgeClassName: "bg-violet-100 text-violet-700",
+    className: "border-blue-300 bg-blue-50 text-slate-800",
+    badgeClassName: "bg-blue-100 text-blue-700",
   },
   Service: {
     term: "Service",
     friendlyLabel: "접속 주소",
     helpText:
       "Pod가 바뀌어도 같은 주소로 앱에 연결할 수 있게 해 주는 리소스입니다.",
-    className: "border-blue-200 bg-white text-slate-800",
+    className: "border-blue-300 bg-white text-slate-800",
     badgeClassName: "bg-blue-100 text-blue-700",
   },
   Pod: {
     term: "Pod",
     friendlyLabel: "실행 중인 앱",
     helpText: "컨테이너가 실제로 실행되는 가장 작은 Kubernetes 단위입니다.",
-    className: "border-[#bfe2d6] bg-white text-[#18483b]",
-    badgeClassName: "bg-[#e0f6ed] text-[#197357]",
+    className: "border-slate-300 bg-white text-slate-800",
+    badgeClassName: "bg-emerald-100 text-emerald-700",
   },
   ServiceAccount: {
     term: "ServiceAccount",
     friendlyLabel: "앱 계정",
     helpText: "Pod 안의 앱이 Kubernetes API를 사용할 때 쓰는 전용 계정입니다.",
-    className: "border-[#fed9a3] bg-white text-[#624116]",
-    badgeClassName: "bg-[#fff1d6] text-[#a46214]",
+    className: "border-amber-300 bg-white text-slate-800",
+    badgeClassName: "bg-amber-100 text-amber-700",
   },
 };
 
@@ -400,10 +409,10 @@ export default function Home() {
   }[] = [
     {
       label: "CRITICAL",
-      helper: "현재 규칙 없음",
+      helper: "CVE 연동 시 표시",
       value: 0,
-      valueClassName: "text-rose-600",
-      filter: null,
+      valueClassName: "text-fuchsia-700",
+      filter: "critical",
     },
     {
       label: "HIGH",
@@ -563,9 +572,9 @@ export default function Home() {
           targetPosition: Position.Left,
           style: {
             width: 212,
-            borderRadius: 5,
+            borderRadius: 2,
             borderWidth: 1,
-            boxShadow: "0 3px 10px rgba(15, 58, 65, 0.08)",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.18)",
             zIndex: 1,
           },
           className: `${meta.className} cursor-grab active:cursor-grabbing`,
@@ -614,7 +623,7 @@ export default function Home() {
       .filter((edge) => edge.relationship !== "포함")
       .map((edge) => {
         const isTrafficEdge = edge.relationship === "트래픽 전달";
-        const color = isTrafficEdge ? "#2563eb" : "#ea580c";
+        const color = isTrafficEdge ? "#326ce5" : "#607d8b";
 
         return {
           id: edge.id,
@@ -624,8 +633,8 @@ export default function Home() {
           label: isTrafficEdge ? "트래픽" : undefined,
           animated: isTrafficEdge,
           markerEnd: { type: MarkerType.ArrowClosed, color },
-          labelStyle: { fill: "#1d4ed8", fontSize: 11, fontWeight: 700 },
-          labelBgStyle: { fill: "#eff6ff", fillOpacity: 0.96 },
+          labelStyle: { fill: "#326ce5", fontSize: 11, fontWeight: 700 },
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.96 },
           style: isTrafficEdge
             ? { stroke: color, strokeWidth: 2 }
             : { stroke: color, strokeWidth: 1.75, strokeDasharray: "6 5" },
@@ -682,21 +691,51 @@ export default function Home() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
+    <main className="kube-dashboard min-h-screen bg-slate-50 text-slate-950">
       <div className="min-h-screen">
-        <header className="flex min-h-16 flex-wrap items-center gap-x-5 gap-y-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-sm font-black text-white">
+        <header className="kube-topbar flex min-h-16 flex-wrap items-center gap-x-5 gap-y-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+          <Link href="/" className="kube-brand flex items-center gap-3">
+            <span className="kube-brand-mark flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-sm font-black text-white">
               K
             </span>
-            <span className="text-sm font-black tracking-[0.14em] text-slate-900">
+            <span className="kube-brand-name text-sm font-black tracking-[0.14em] text-slate-900">
               KUBECOMPASS
             </span>
           </Link>
-          <span className="hidden h-5 w-px bg-slate-200 sm:block" />
-          <p className="text-sm font-bold text-slate-700">{activePageMeta.title}</p>
+          <span className="kube-topbar-divider hidden h-7 w-px bg-slate-200 sm:block" />
+          <p className="kube-topbar-title text-sm font-bold text-slate-700">
+            Kubernetes Resource Dashboard
+          </p>
+          <div
+            className="kube-search-hint hidden lg:flex"
+            aria-hidden="true"
+          >
+            <span>⌕</span>
+            <span>리소스 탐색</span>
+          </div>
+          <button
+            className="kube-reload-button rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-500 hover:text-blue-700 disabled:cursor-wait disabled:opacity-60"
+            disabled={loadState === "loading"}
+            onClick={() => setReloadKey((key) => key + 1)}
+          >
+            새로고침
+          </button>
+        </header>
+
+        <div className="kube-context-bar">
+          <div className="kube-context-content">
+            <div className="kube-breadcrumb" aria-label="현재 페이지">
+              <span className="kube-menu-icon" aria-hidden="true">
+                ☰
+              </span>
+              <span className="kube-breadcrumb-root">KubeCompass</span>
+              <span className="kube-breadcrumb-separator" aria-hidden="true">
+                ›
+              </span>
+              <span className="kube-breadcrumb-current">{activePageMeta.title}</span>
+            </div>
           <nav
-            className="order-3 flex w-full flex-wrap gap-1 sm:order-none sm:ml-auto sm:w-auto"
+            className="kube-primary-nav flex w-full flex-wrap gap-1 sm:w-auto"
             aria-label="KubeCompass 주요 화면"
           >
             {navigationItems.map((item) => {
@@ -707,7 +746,7 @@ export default function Home() {
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                  className={`kube-nav-link rounded-md px-3 py-1.5 text-sm font-semibold transition ${
                     isActive
                       ? "bg-blue-700 text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-blue-700"
@@ -718,18 +757,12 @@ export default function Home() {
               );
             })}
           </nav>
-          <button
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-500 hover:text-blue-700 disabled:cursor-wait disabled:opacity-60"
-            disabled={loadState === "loading"}
-            onClick={() => setReloadKey((key) => key + 1)}
-          >
-            새로고침
-          </button>
-        </header>
+          </div>
+        </div>
 
         {currentView === "home" && (
           <section
-            className="min-h-[calc(100vh-4rem)]"
+            className="min-h-[calc(100vh-8rem)]"
             aria-labelledby="cluster-summary-title"
           >
             <div className="border-b border-slate-200 bg-white">
@@ -852,7 +885,7 @@ export default function Home() {
 
         {currentView === "cluster-map" && (
         <section
-          className="flex h-[calc(100vh-4rem)] min-h-[720px] flex-col overflow-hidden bg-white"
+          className="flex h-[calc(100vh-8rem)] min-h-[720px] flex-col overflow-hidden bg-white"
           aria-labelledby="topology-title"
         >
           <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-3 sm:px-6">
@@ -1047,7 +1080,7 @@ export default function Home() {
                     elementsSelectable={false}
                     proOptions={{ hideAttribution: true }}
                   >
-                    <Background color="#d8e1ee" gap={18} size={1} />
+                    <Background color="#d6dce4" gap={18} size={1} />
                     <Controls showInteractive={false} />
                   </ReactFlow>
                 )}
@@ -1059,7 +1092,7 @@ export default function Home() {
 
         {currentView === "security" && (
           <section
-            className="min-h-[calc(100vh-4rem)] bg-slate-50"
+            className="min-h-[calc(100vh-8rem)] bg-slate-50"
             aria-labelledby="security-title"
           >
             <div className="border-b border-slate-200 bg-white">
@@ -1093,8 +1126,17 @@ export default function Home() {
                   Summary of configuration risks
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  이미지를 취약점으로 검사하는 화면 형식을 참고하되, KubeCompass는
-                  Kubernetes 설정을 읽기 전용으로 점검합니다.
+                  Kubernetes Pod Security Standards, RBAC Good Practices, AWS EKS
+                  Best Practices를 근거로 설정을 읽기 전용으로 점검합니다. CVSS는
+                  CVE 기반 취약점에만 표시하며 구성 위험에는 임의 점수를 붙이지 않습니다. {" "}
+                  <a
+                    href="https://www.first.org/cvss/v4.0/specification-document"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-blue-700 underline underline-offset-2"
+                  >
+                    FIRST CVSS v4.0 기준 보기
+                  </a>
                 </p>
               </div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1158,7 +1200,7 @@ export default function Home() {
             </div>
 
             <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(340px,0.85fr)_minmax(0,1.4fr)]">
-              <aside className="flex min-h-[620px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white xl:h-[650px]">
+              <aside className="kube-finding-panel flex min-h-[620px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white xl:h-[650px]">
                 <div className="border-b border-slate-200 px-4 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1177,7 +1219,7 @@ export default function Home() {
                     className="mt-4 flex flex-wrap gap-1.5"
                     aria-label="보안 이슈 위험도 필터"
                   >
-                    {(["all", "high", "medium", "low"] as const).map(
+                    {(["all", "critical", "high", "medium", "low"] as const).map(
                       (filter) => {
                         const isActive = issueFilter === filter;
                         const label =
@@ -1265,7 +1307,7 @@ export default function Home() {
                 </div>
               </aside>
 
-              <section className="min-h-[620px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:h-[650px]">
+              <section className="kube-finding-panel min-h-[620px] overflow-hidden rounded-lg border border-slate-200 bg-white xl:h-[650px]">
                 {selectedIssue ? (
                   <div className="h-full overflow-y-auto p-5 sm:p-6">
                     <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
@@ -1287,7 +1329,7 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-lg bg-slate-50 p-3">
                         <p className="text-[10px] font-black tracking-[0.12em] text-slate-500">
                           RESOURCE
@@ -1310,6 +1352,49 @@ export default function Home() {
                           읽기 전용 설정 점검 규칙
                         </p>
                       </div>
+                      <div className="rounded-lg bg-slate-50 p-3">
+                        <p className="text-[10px] font-black tracking-[0.12em] text-slate-500">
+                          ASSESSMENT
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">
+                          {selectedIssue.assessment}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {selectedIssue.category}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 p-3">
+                        <p className="text-[10px] font-black tracking-[0.12em] text-slate-500">
+                          CVSS
+                        </p>
+                        <p className="mt-1 text-sm font-bold leading-5 text-slate-900">
+                          {selectedIssue.cvss}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                      <p className="text-[10px] font-black tracking-[0.12em] text-blue-800">
+                        STANDARDS &amp; GUIDANCE
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        이 항목의 기준과 근거
+                      </p>
+                      <ul className="mt-3 space-y-2">
+                        {selectedIssue.references.map((reference) => (
+                          <li key={`${reference.framework}-${reference.url}`}>
+                            <a
+                              href={reference.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block rounded border border-blue-100 bg-white px-3 py-2 text-sm transition hover:border-blue-300 hover:text-blue-800"
+                            >
+                              <span className="font-bold">{reference.framework}</span>
+                              <span className="ml-2 text-slate-600">{reference.control}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
 
                     <div className="mt-5 grid gap-5 text-sm leading-6 text-slate-700 md:grid-cols-3">

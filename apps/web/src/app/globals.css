@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f5f5f5;
+  --foreground: #212121;
+  --kube-blue: #326ce5;
+  --kube-blue-dark: #2459c6;
+  --kube-surface: #ffffff;
+  --kube-border: #d9d9d9;
+  --kube-muted: #6b6b6b;
 }
 
 @theme inline {
@@ -21,5 +26,337 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+/* Kubernetes Dashboard inspired visual system. */
+.kube-dashboard {
+  min-width: 320px;
+  background: #f5f5f5;
+  color: #212121;
+  font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+.kube-dashboard :is(.rounded, .rounded-sm, .rounded-md, .rounded-lg, .rounded-xl, .rounded-full) {
+  border-radius: 2px;
+}
+
+.kube-dashboard .border-slate-200 {
+  border-color: var(--kube-border);
+}
+
+.kube-dashboard .border-slate-300 {
+  border-color: #c7c7c7;
+}
+
+.kube-dashboard .bg-slate-50 {
+  background-color: #f5f5f5;
+}
+
+.kube-dashboard .bg-slate-100 {
+  background-color: #eeeeee;
+}
+
+.kube-dashboard .text-slate-950,
+.kube-dashboard .text-slate-900 {
+  color: #212121;
+}
+
+.kube-dashboard .text-slate-800,
+.kube-dashboard .text-slate-700 {
+  color: #3d3d3d;
+}
+
+.kube-dashboard .text-slate-600,
+.kube-dashboard .text-slate-500 {
+  color: var(--kube-muted);
+}
+
+.kube-dashboard .text-blue-700 {
+  color: var(--kube-blue);
+}
+
+.kube-dashboard .bg-blue-700 {
+  background-color: var(--kube-blue);
+}
+
+.kube-dashboard .border-blue-500 {
+  border-color: var(--kube-blue);
+}
+
+.kube-dashboard .shadow-sm {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 16%);
+}
+
+.kube-dashboard .font-black {
+  font-weight: 700;
+}
+
+.kube-topbar {
+  min-height: 72px;
+  border-bottom: 0;
+  background: var(--kube-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 13%);
+}
+
+.kube-brand {
+  color: #1d1d1d;
+  text-decoration: none;
+}
+
+.kube-brand-mark {
+  width: 43px;
+  height: 43px;
+  border-radius: 50% !important;
+  background: var(--kube-blue) !important;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 35%);
+  font-size: 17px;
+}
+
+.kube-brand-name {
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.kube-topbar-divider {
+  background: #d7d7d7;
+}
+
+.kube-topbar-title {
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.kube-search-hint {
+  align-items: center;
+  gap: 12px;
+  height: 42px;
+  max-width: 560px;
+  flex: 1;
+  margin-left: auto;
+  padding: 0 18px;
+  border-radius: 2px;
+  background: #efefef;
+  color: #777;
+  font-size: 15px;
+}
+
+.kube-search-hint span:first-child {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.kube-reload-button {
+  margin-left: auto;
+  border-radius: 2px !important;
+  border-color: #bfc7d4;
+  color: var(--kube-blue);
+  box-shadow: none;
+}
+
+.kube-context-bar {
+  background: var(--kube-blue);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 18%);
+}
+
+.kube-context-content {
+  display: flex;
+  min-height: 58px;
+  width: 100%;
+  max-width: 1440px;
+  align-items: center;
+  gap: 24px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.kube-breadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  color: rgb(255 255 255 / 88%);
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.kube-menu-icon {
+  margin-right: 8px;
+  color: #fff;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.kube-breadcrumb-root {
+  color: rgb(255 255 255 / 70%);
+}
+
+.kube-breadcrumb-separator {
+  color: rgb(255 255 255 / 56%);
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 0;
+}
+
+.kube-breadcrumb-current {
+  overflow: hidden;
+  color: #fff;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kube-primary-nav {
+  margin-left: auto;
+}
+
+.kube-dashboard .kube-nav-link {
+  border-radius: 2px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kube-dashboard .kube-nav-link.bg-blue-700 {
+  background: rgb(0 0 0 / 14%);
+  color: #fff;
+  box-shadow: inset 0 -2px 0 #fff;
+}
+
+.kube-dashboard .kube-nav-link:hover {
+  background: rgb(0 0 0 / 11%);
+  color: #fff;
+}
+
+.kube-dashboard :is(button, select, a):focus-visible {
+  outline: 2px solid var(--kube-blue);
+  outline-offset: 2px;
+}
+
+.kube-dashboard select {
+  border-radius: 2px !important;
+  background-color: #fff;
+  box-shadow: none;
+}
+
+.kube-dashboard select:focus {
+  border-color: var(--kube-blue);
+  box-shadow: 0 1px 0 var(--kube-blue);
+}
+
+.kube-dashboard article,
+.kube-dashboard .kube-finding-panel {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 14%);
+}
+
+.kube-dashboard .group.rounded-xl,
+.kube-dashboard article.rounded-xl {
+  border-color: #d7d7d7;
+}
+
+.kube-dashboard .group.rounded-xl:hover,
+.kube-dashboard article.rounded-xl:hover {
+  border-color: #93b4f4;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 16%);
+  transform: none;
+}
+
+.kube-dashboard .react-flow {
+  background: #f7f7f7;
+}
+
+.kube-dashboard .react-flow__node {
+  border-radius: 2px !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%) !important;
+}
+
+.kube-dashboard .react-flow__node-namespaceArea {
+  border-color: #9bbcf6 !important;
+  background: #f5f9ff !important;
+  box-shadow: none !important;
+}
+
+.kube-dashboard .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid #cfcfcf;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+}
+
+.kube-dashboard .react-flow__controls-button {
+  width: 30px;
+  height: 30px;
+  border-bottom-color: #d8d8d8;
+  background: #fff;
+  fill: #555;
+}
+
+.kube-dashboard .react-flow__controls-button:hover {
+  background: #f0f5ff;
+}
+
+.kube-dashboard .react-flow__attribution {
+  display: none;
+}
+
+.kube-dashboard pre {
+  border-radius: 2px;
+  background: #263238;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
+}
+
+@media (max-width: 1023px) {
+  .kube-topbar {
+    min-height: 64px;
+  }
+
+  .kube-context-content {
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  .kube-primary-nav {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .kube-brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .kube-brand-name {
+    font-size: 18px;
+  }
+
+  .kube-topbar-title {
+    display: none;
+  }
+
+  .kube-reload-button {
+    margin-left: auto;
+  }
+
+  .kube-context-content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .kube-breadcrumb {
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .kube-menu-icon {
+    margin-right: 2px;
+    font-size: 22px;
+  }
 }
